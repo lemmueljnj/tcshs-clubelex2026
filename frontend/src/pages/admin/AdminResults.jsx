@@ -83,10 +83,14 @@ export default function AdminResults() {
           <div className="space-y-6">
             {results.positions.map((p) => {
               const total = p.candidates.reduce((s, c) => s + c.votes, 0);
+              const sections = results.sections || [];
               return (
                 <section key={p.position_id} className="soft-card p-5" data-testid={`result-position-${p.position_id}`}>
-                  <div className="flex items-baseline justify-between">
-                    <h2 className="font-heading text-lg font-medium">{p.title}</h2>
+                  <div className="flex items-baseline justify-between gap-2 flex-wrap">
+                    <div className="flex items-center gap-2">
+                      <h2 className="font-heading text-lg font-medium">{p.title}</h2>
+                      <Badge variant="secondary" className="text-xs">{p.scope === 'year' ? 'year-level' : 'school-wide'}</Badge>
+                    </div>
                     <span className="text-xs text-muted-foreground">{total} vote{total !== 1 ? 's' : ''}</span>
                   </div>
                   <div className="mt-4 space-y-3">
@@ -96,8 +100,9 @@ export default function AdminResults() {
                       return (
                         <div key={c.candidate_id} data-testid={`result-candidate-${c.candidate_id}`}>
                           <div className="flex items-baseline justify-between text-sm">
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 flex-wrap">
                               <span className={`font-medium ${i === 0 && total > 0 ? 'text-primary' : ''}`}>{c.name}</span>
+                              {c.year_level && <Badge variant="outline" className="text-[10px] px-1.5 py-0">{c.year_level}</Badge>}
                               {i === 0 && total > 0 && <Badge className="bg-primary">Leading</Badge>}
                             </div>
                             <div className="text-muted-foreground">{c.votes} · {pct}%</div>
@@ -107,6 +112,44 @@ export default function AdminResults() {
                       );
                     })}
                   </div>
+
+                  {sections.length > 0 && total > 0 && (
+                    <div className="mt-5 pt-4 border-t border-border" data-testid={`section-breakdown-${p.position_id}`}>
+                      <div className="stat-label mb-3">Breakdown by section</div>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-xs">
+                          <thead className="text-muted-foreground">
+                            <tr>
+                              <th className="text-left p-2">Candidate</th>
+                              {sections.map((s) => (
+                                <th key={s} className="text-right p-2 whitespace-nowrap">{s}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {p.candidates.map((c) => (
+                              <tr key={c.candidate_id} className="border-t border-border">
+                                <td className="p-2 font-medium">{c.name}</td>
+                                {sections.map((s) => (
+                                  <td key={s} className="p-2 text-right text-muted-foreground" data-testid={`cell-${c.candidate_id}-${s}`}>
+                                    {c.by_section?.[s] || 0}
+                                  </td>
+                                ))}
+                              </tr>
+                            ))}
+                            <tr className="border-t border-border bg-muted/40">
+                              <td className="p-2 font-semibold">Section total ballots</td>
+                              {sections.map((s) => (
+                                <td key={s} className="p-2 text-right font-semibold">
+                                  {results.section_totals?.[s] || 0}
+                                </td>
+                              ))}
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
                 </section>
               );
             })}

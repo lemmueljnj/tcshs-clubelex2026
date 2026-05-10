@@ -9,22 +9,27 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
-import { ArrowLeft, Plus, Trash2, Play, Square } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Play, Square, Globe, GraduationCap } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function AdminElectionDetail() {
   const { electionId } = useParams();
   const [election, setElection] = useState(null);
+  const [sections, setSections] = useState([]);
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ name: '', bio: '', position_id: '', photo_url: '' });
+  const [form, setForm] = useState({ name: '', bio: '', position_id: '', photo_url: '', year_level: '' });
   const [saving, setSaving] = useState(false);
 
   const load = async () => {
     try {
-      const { data } = await api.get(`/elections/${electionId}`);
-      setElection(data);
-      if (!form.position_id && data.positions?.[0]) {
-        setForm((f) => ({ ...f, position_id: data.positions[0].id }));
+      const [e, s] = await Promise.all([
+        api.get(`/elections/${electionId}`),
+        api.get('/sections'),
+      ]);
+      setElection(e.data);
+      setSections(s.data);
+      if (!form.position_id && e.data.positions?.[0]) {
+        setForm((f) => ({ ...f, position_id: e.data.positions[0].id }));
       }
     } catch (err) {
       toast.error(formatApiError(err));
@@ -44,9 +49,14 @@ export default function AdminElectionDetail() {
     }
   };
 
+  const yearLevels = Array.from(new Set(sections.map((s) => s.year_level))).sort();
+  const selectedPosition = (election?.positions || []).find((p) => p.id === form.position_id);
+  const isYearScoped = selectedPosition?.scope === 'year';
+
   const addCandidate = async (e) => {
     e.preventDefault();
     if (!form.name.trim() || !form.position_id) { toast.error('Name and position are required'); return; }
+    if (isYearScoped && !form.year_level) { toast.error('Pick the candidate\'s year-level'); return; }
     setSaving(true);
     try {
       await api.post(`/elections/${electionId}/candidates`, {
@@ -54,10 +64,11 @@ export default function AdminElectionDetail() {
         bio: form.bio.trim(),
         photo_url: form.photo_url.trim(),
         position_id: form.position_id,
+        year_level: isYearScoped ? form.year_level : undefined,
       });
       toast.success('Candidate added');
       setOpen(false);
-      setForm((f) => ({ ...f, name: '', bio: '', photo_url: '' }));
+      setForm((f) => ({ ...f, name: '', bio: '', photo_url: '', year_level: '' }));
       load();
     } catch (err) {
       toast.error(formatApiError(err));
@@ -106,15 +117,32 @@ export default function AdminElectionDetail() {
               <form onSubmit={addCandidate} className="space-y-4">
                 <div>
                   <Label>Position</Label>
-                  <Select value={form.position_id} onValueChange={(v) => setForm({ ...form, position_id: v })}>
+                  <Select value={form.position_id} onValueChange={(v) => setForm({ ...form, position_id: v, year_level: '' })}>
                     <SelectTrigger data-testid="candidate-position-select"><SelectValue placeholder="Select position" /></SelectTrigger>
                     <SelectContent>
                       {positions.map((p) => (
-                        <SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.title} {p.scope === 'year' ? '· year-level' : '· school-wide'}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
+                {isYearScoped && (
+                  <div>
+                    <Label>Year-level</Label>
+                    <Select value={form.year_level} onValueChange={(v) => setForm({ ...form, year_level: v })}>
+                      <SelectTrigger data-testid="candidate-year-select"><SelectValue placeholder="Pick year-level" /></SelectTrigger>
+                      <SelectContent>
+                        {yearLevels.length === 0 && <div className="px-2 py-1 text-sm text-muted-foreground">Add sections first under Admin → Sections</div>}
+                        {yearLevels.map((y) => (
+                          <SelectItem key={y} value={y} data-testid={`candidate-year-option-${y}`}>{y}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground mt-1">Only students in <strong>{form.year_level || 'this year-level'}</strong> will see this candidate.</p>
+                  </div>
+                )}
                 <div>
                   <Label htmlFor="cname">Name</Label>
                   <Input id="cname" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required data-testid="candidate-name-input" />
@@ -149,8 +177,13 @@ export default function AdminElectionDetail() {
           const list = candidates.filter((c) => c.position_id === p.id);
           return (
             <section key={p.id} className="soft-card p-5" data-testid={`admin-position-${p.id}`}>
-              <div className="flex items-baseline justify-between">
-                <h2 className="font-heading text-lg font-medium">{p.title}</h2>
+              <div className="flex items-baseline justify-between gap-2 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <h2 className="font-heading text-lg font-medium">{p.title}</h2>
+                  <Badge variant="secondary" className="text-xs">
+                    {p.scope === 'year' ? <><GraduationCap className="h-3 w-3 mr-1" /> year-level</> : <><Globe className="h-3 w-3 mr-1" /> school-wide</>}
+                  </Badge>
+                </div>
                 <span className="text-xs text-muted-foreground">{list.length} candidate{list.length !== 1 ? 's' : ''}</span>
               </div>
               <div className="mt-3 grid sm:grid-cols-2 gap-3">
@@ -161,7 +194,10 @@ export default function AdminElectionDetail() {
                       {c.name?.[0]?.toUpperCase()}
                     </div>
                     <div className="flex-1">
-                      <div className="font-medium">{c.name}</div>
+                      <div className="font-medium flex items-center gap-2">
+                        {c.name}
+                        {c.year_level && <Badge variant="outline" className="text-[10px] px-1.5 py-0">{c.year_level}</Badge>}
+                      </div>
                       {c.bio && <div className="text-xs text-muted-foreground line-clamp-2">{c.bio}</div>}
                     </div>
                     <Button variant="ghost" size="icon" onClick={() => removeCandidate(c.id)} data-testid={`delete-candidate-${c.id}`}>

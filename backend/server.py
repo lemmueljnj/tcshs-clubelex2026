@@ -102,6 +102,7 @@ class RegisterIn(BaseModel):
     password: str = Field(min_length=6)
     name: str = Field(min_length=1, max_length=80)
     student_id: Optional[str] = None
+    section_id: Optional[str] = None
 
 class LoginIn(BaseModel):
     email: EmailStr
@@ -114,11 +115,19 @@ class UserOut(BaseModel):
     role: str
     status: str
     student_id: Optional[str] = None
+    section_id: Optional[str] = None
+    year_level: Optional[str] = None
+    section_name: Optional[str] = None
     created_at: str
+
+class SectionIn(BaseModel):
+    year_level: str = Field(min_length=1, max_length=40)
+    name: str = Field(min_length=1, max_length=60)
 
 class PositionIn(BaseModel):
     title: str
     description: Optional[str] = ""
+    scope: Literal["school", "year"] = "school"
 
 class Position(PositionIn):
     id: str
@@ -139,12 +148,14 @@ class CandidateIn(BaseModel):
     bio: Optional[str] = ""
     photo_url: Optional[str] = ""
     position_id: str
+    year_level: Optional[str] = None  # required when position scope == "year"
 
 class CandidatePatch(BaseModel):
     name: Optional[str] = None
     bio: Optional[str] = None
     photo_url: Optional[str] = None
     position_id: Optional[str] = None
+    year_level: Optional[str] = None
 
 class VoteSelection(BaseModel):
     position_id: str
@@ -194,6 +205,19 @@ async def register(body: RegisterIn, response: Response):
     if await db.users.find_one({"email": email}):
         raise HTTPException(status_code=400, detail="Email is already registered")
 
+    # Resolve section (required for students)
+    section_id = (body.section_id or "").strip() or None
+    section_doc = None
+    if section_id:
+        section_doc = await db.sections.find_one({"id": section_id}, {"_id": 0})
+        if not section_doc:
+            raise HTTPException(status_code=400, detail="Selected section is invalid")
+    else:
+        # Only required if at least one section exists in the system
+        sections_count = await db.sections.count_documents({})
+        if sections_count > 0:
+            raise HTTPException(status_code=400, detail="Please select your year-level and section")
+
     # Check if pre-loaded in voter_list -> auto approve
     preload = await db.voter_list.find_one({"email": email})
     status = "approved" if preload else "pending"
@@ -207,6 +231,9 @@ async def register(body: RegisterIn, response: Response):
         "role": "student",
         "status": status,
         "student_id": (body.student_id or (preload.get("student_id") if preload else "") or "").strip(),
+        "section_id": section_doc["id"] if section_doc else None,
+        "year_level": section_doc["year_level"] if section_doc else None,
+        "section_name": section_doc["name"] if section_doc else None,
         "created_at": now_utc().isoformat(),
     }
     await db.users.insert_one(user_doc)
@@ -261,7 +288,15 @@ async def list_elections(user: dict = Depends(get_current_user)):
 @api.post("/elections")
 async def create_election(body: ElectionIn, _: dict = Depends(require_admin)):
     eid = str(uuid.uuid4())
-    positions = [{"id": str(uuid.uuid4()), "title": p.title, "description": p.description or ""} for p in body.positions]
+    positions = [
+        {
+            "id": str(uuid.uuid4()),
+            "title": p.title,
+            "description": p.description or "",
+            "scope": p.scope or "school",
+        }
+        for p in body.positions
+    ]
     doc = {
         "id": eid,
         "title": body.title,
@@ -282,7 +317,27 @@ async def get_election(election_id: str, user: dict = Depends(get_current_user))
         raise HTTPException(status_code=404, detail="Election not found")
     if user["role"] != "admin" and e.get("status") not in ("active", "closed"):
         raise HTTPException(status_code=404, detail="Election not found")
+
+    # Default scope to "school" for legacy positions
+    for p in e.get("positions", []):
+        p.setdefault("scope", "school")
+
     candidates = await db.candidates.find({"election_id": election_id}, {"_id": 0}).to_list(1000)
+
+    if user["role"] != "admin":
+        # Filter candidates per the voter's year-level when position scope == "year"
+        pos_scope = {p["id"]: p.get("scope", "school") for p in e.get("positions", [])}
+        user_year = user.get("year_level")
+        filtered = []
+        for c in candidates:
+            scope = pos_scope.get(c["position_id"], "school")
+            if scope == "year":
+                if user_year and c.get("year_level") and c["year_level"] == user_year:
+                    filtered.append(c)
+            else:
+                filtered.append(c)
+        candidates = filtered
+
     e["candidates"] = candidates
     if user["role"] != "admin":
         v = await db.votes.find_one({"voter_id": user["id"], "election_id": election_id})
@@ -311,6 +366,7 @@ async def update_election(election_id: str, body: ElectionPatch, _: dict = Depen
                 "id": existing.get(p.title, str(uuid.uuid4())),
                 "title": p.title,
                 "description": p.description or "",
+                "scope": p.scope or "school",
             })
         update["positions"] = new_positions
     if update:
@@ -339,9 +395,13 @@ async def create_candidate(election_id: str, body: CandidateIn, _: dict = Depend
     e = await db.elections.find_one({"id": election_id})
     if not e:
         raise HTTPException(status_code=404, detail="Election not found")
-    pos_ids = {p["id"] for p in e.get("positions", [])}
-    if body.position_id not in pos_ids:
+    pos_by_id = {p["id"]: p for p in e.get("positions", [])}
+    if body.position_id not in pos_by_id:
         raise HTTPException(status_code=400, detail="Invalid position_id for this election")
+    scope = pos_by_id[body.position_id].get("scope", "school")
+    year_level = (body.year_level or "").strip() or None
+    if scope == "year" and not year_level:
+        raise HTTPException(status_code=400, detail="Year-level is required for candidates of a year-level position")
     cid = str(uuid.uuid4())
     doc = {
         "id": cid,
@@ -350,6 +410,7 @@ async def create_candidate(election_id: str, body: CandidateIn, _: dict = Depend
         "name": body.name,
         "bio": body.bio or "",
         "photo_url": body.photo_url or "",
+        "year_level": year_level if scope == "year" else None,
         "created_at": now_utc().isoformat(),
     }
     await db.candidates.insert_one(doc)
@@ -396,7 +457,10 @@ async def cast_vote(election_id: str, body: VoteIn, user: dict = Depends(require
         raise HTTPException(status_code=400, detail="You have already voted in this election")
 
     pos_ids = {p["id"] for p in e.get("positions", [])}
-    candidate_ids = {c["id"]: c["position_id"] for c in await db.candidates.find({"election_id": election_id}, {"_id": 0}).to_list(2000)}
+    pos_scope = {p["id"]: p.get("scope", "school") for p in e.get("positions", [])}
+    cand_map = {c["id"]: c for c in await db.candidates.find({"election_id": election_id}, {"_id": 0}).to_list(2000)}
+
+    user_year = user.get("year_level")
 
     seen_positions = set()
     for sel in body.selections:
@@ -405,8 +469,14 @@ async def cast_vote(election_id: str, body: VoteIn, user: dict = Depends(require
         if sel.position_id in seen_positions:
             raise HTTPException(status_code=400, detail="Duplicate selection for a single position")
         seen_positions.add(sel.position_id)
-        if candidate_ids.get(sel.candidate_id) != sel.position_id:
+        cand = cand_map.get(sel.candidate_id)
+        if not cand or cand["position_id"] != sel.position_id:
             raise HTTPException(status_code=400, detail="Candidate does not match position")
+        if pos_scope.get(sel.position_id) == "year":
+            if not user_year:
+                raise HTTPException(status_code=400, detail="Your account has no year-level set; cannot vote for year-level positions")
+            if cand.get("year_level") and cand["year_level"] != user_year:
+                raise HTTPException(status_code=400, detail="You can only vote for candidates of your own year-level")
 
     vote_doc = {
         "id": str(uuid.uuid4()),
@@ -414,6 +484,9 @@ async def cast_vote(election_id: str, body: VoteIn, user: dict = Depends(require
         "election_id": election_id,
         "selections": [s.model_dump() for s in body.selections],
         "client_id": body.client_id,
+        "section_id": user.get("section_id"),
+        "section_name": user.get("section_name"),
+        "year_level": user.get("year_level"),
         "created_at": now_utc().isoformat(),
     }
     await db.votes.insert_one(vote_doc)
@@ -429,25 +502,55 @@ async def get_results(election_id: str, _: dict = Depends(require_admin)):
     candidates = await db.candidates.find({"election_id": election_id}, {"_id": 0}).to_list(2000)
     cand_by_id = {c["id"]: c for c in candidates}
 
-    tallies = {}  # position_id -> { candidate_id -> count }
+    # Default scope on legacy positions
     for p in e.get("positions", []):
-        tallies[p["id"]] = {c["id"]: 0 for c in candidates if c["position_id"] == p["id"]}
+        p.setdefault("scope", "school")
+
+    # Tallies: position_id -> { candidate_id -> { total: n, by_section: { section_label: n } } }
+    tallies = {}
+    sections_seen = set()
+    for p in e.get("positions", []):
+        tallies[p["id"]] = {
+            c["id"]: {"total": 0, "by_section": {}}
+            for c in candidates if c["position_id"] == p["id"]
+        }
 
     total_votes = 0
+    section_totals = {}  # section_label -> total ballots cast
     async for v in db.votes.find({"election_id": election_id}, {"_id": 0}):
         total_votes += 1
+        section_label = v.get("section_name") or "Unassigned"
+        if v.get("year_level"):
+            section_label = f"{v['year_level']} — {section_label}"
+        sections_seen.add(section_label)
+        section_totals[section_label] = section_totals.get(section_label, 0) + 1
         for sel in v.get("selections", []):
-            if sel["position_id"] in tallies and sel["candidate_id"] in tallies[sel["position_id"]]:
-                tallies[sel["position_id"]][sel["candidate_id"]] += 1
+            bucket = tallies.get(sel["position_id"], {}).get(sel["candidate_id"])
+            if bucket is not None:
+                bucket["total"] += 1
+                bucket["by_section"][section_label] = bucket["by_section"].get(section_label, 0) + 1
+
+    sections_sorted = sorted(sections_seen)
 
     results = []
     for p in e.get("positions", []):
         rows = []
-        for cid, count in tallies.get(p["id"], {}).items():
+        for cid, data in tallies.get(p["id"], {}).items():
             cand = cand_by_id.get(cid, {})
-            rows.append({"candidate_id": cid, "name": cand.get("name", "Unknown"), "votes": count})
+            rows.append({
+                "candidate_id": cid,
+                "name": cand.get("name", "Unknown"),
+                "year_level": cand.get("year_level"),
+                "votes": data["total"],
+                "by_section": data["by_section"],
+            })
         rows.sort(key=lambda x: x["votes"], reverse=True)
-        results.append({"position_id": p["id"], "title": p["title"], "candidates": rows})
+        results.append({
+            "position_id": p["id"],
+            "title": p["title"],
+            "scope": p.get("scope", "school"),
+            "candidates": rows,
+        })
 
     total_eligible = await db.users.count_documents({"role": "student", "status": "approved"})
     return {
@@ -455,6 +558,8 @@ async def get_results(election_id: str, _: dict = Depends(require_admin)):
         "total_votes": total_votes,
         "total_eligible": total_eligible,
         "turnout_pct": round((total_votes / total_eligible) * 100, 2) if total_eligible else 0,
+        "sections": sections_sorted,
+        "section_totals": section_totals,
         "positions": results,
     }
 
@@ -585,6 +690,42 @@ async def delete_admin(user_id: str, current: dict = Depends(require_admin)):
     return {"ok": True}
 
 
+# ----- Sections (year-level + section name; managed by admin) -----
+@api.get("/sections")
+async def list_sections_public():
+    items = await db.sections.find({}, {"_id": 0}).sort([("year_level", 1), ("name", 1)]).to_list(1000)
+    return items
+
+
+@api.post("/admin/sections")
+async def create_section(body: SectionIn, _: dict = Depends(require_admin)):
+    year = body.year_level.strip()
+    name = body.name.strip()
+    existing = await db.sections.find_one({"year_level": year, "name": name})
+    if existing:
+        raise HTTPException(status_code=400, detail="That section already exists for this year-level")
+    doc = {
+        "id": str(uuid.uuid4()),
+        "year_level": year,
+        "name": name,
+        "created_at": now_utc().isoformat(),
+    }
+    await db.sections.insert_one(doc)
+    doc.pop("_id", None)
+    return doc
+
+
+@api.delete("/admin/sections/{section_id}")
+async def delete_section(section_id: str, _: dict = Depends(require_admin)):
+    in_use = await db.users.count_documents({"section_id": section_id})
+    if in_use > 0:
+        raise HTTPException(status_code=400, detail=f"Cannot delete: {in_use} student(s) belong to this section")
+    res = await db.sections.delete_one({"id": section_id})
+    if res.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Section not found")
+    return {"ok": True}
+
+
 # ----- Branding (public read, admin write) -----
 DEFAULT_BRAND = {"name": "CampusVote", "logo_url": ""}
 
@@ -677,6 +818,9 @@ async def seed_admin():
 async def on_startup():
     await db.users.create_index("email", unique=True)
     await db.users.create_index("id", unique=True)
+    await db.users.create_index("section_id")
+    await db.sections.create_index("id", unique=True)
+    await db.sections.create_index([("year_level", 1), ("name", 1)], unique=True)
     await db.voter_list.create_index("email", unique=True)
     await db.elections.create_index("id", unique=True)
     await db.candidates.create_index("id", unique=True)

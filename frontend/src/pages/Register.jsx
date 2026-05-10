@@ -1,18 +1,37 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { formatApiError } from '@/lib/api';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { api, formatApiError } from '@/lib/api';
 import { toast } from 'sonner';
 import BrandMark from '@/components/BrandMark';
 
 export default function Register() {
   const { register } = useAuth();
   const navigate = useNavigate();
-  const [form, setForm] = useState({ email: '', password: '', name: '', student_id: '' });
+  const [form, setForm] = useState({ email: '', password: '', name: '', student_id: '', section_id: '' });
+  const [sections, setSections] = useState([]);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data } = await api.get('/sections');
+        setSections(data);
+      } catch (err) {
+        toast.error(formatApiError(err));
+      }
+    })();
+  }, []);
+
+  const grouped = useMemo(() => {
+    const m = {};
+    sections.forEach((s) => { (m[s.year_level] ||= []).push(s); });
+    return Object.entries(m).sort(([a], [b]) => a.localeCompare(b));
+  }, [sections]);
 
   const update = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -22,6 +41,10 @@ export default function Register() {
       toast.error('Password must be at least 6 characters.');
       return;
     }
+    if (sections.length > 0 && !form.section_id) {
+      toast.error('Please pick your year-level and section.');
+      return;
+    }
     setLoading(true);
     try {
       const user = await register({
@@ -29,6 +52,7 @@ export default function Register() {
         password: form.password,
         name: form.name.trim(),
         student_id: form.student_id.trim() || undefined,
+        section_id: form.section_id || undefined,
       });
       if (user.status === 'pending') {
         toast.success('Account created — pending admin approval.');
@@ -68,6 +92,34 @@ export default function Register() {
             <Label htmlFor="student_id">Student ID <span className="text-muted-foreground">(optional)</span></Label>
             <Input id="student_id" value={form.student_id} onChange={(e) => update('student_id', e.target.value)} data-testid="register-studentid-input" />
           </div>
+
+          {sections.length > 0 ? (
+            <div>
+              <Label>Year-level &amp; section</Label>
+              <Select value={form.section_id} onValueChange={(v) => update('section_id', v)}>
+                <SelectTrigger data-testid="register-section-select">
+                  <SelectValue placeholder="Pick your section" />
+                </SelectTrigger>
+                <SelectContent>
+                  {grouped.map(([year, list]) => (
+                    <div key={year}>
+                      <div className="px-2 py-1.5 stat-label">{year}</div>
+                      {list.map((s) => (
+                        <SelectItem key={s.id} value={s.id} data-testid={`register-section-option-${s.id}`}>
+                          {year} — {s.name}
+                        </SelectItem>
+                      ))}
+                    </div>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-amber-300 bg-amber-50 text-amber-900 p-3 text-xs" data-testid="no-sections-notice">
+              Your school admin hasn't set up year-levels yet. Sign-ups will continue to work, but you may need to be assigned a section later.
+            </div>
+          )}
+
           <div>
             <Label htmlFor="password">Password</Label>
             <Input id="password" type="password" required value={form.password} onChange={(e) => update('password', e.target.value)} data-testid="register-password-input" />

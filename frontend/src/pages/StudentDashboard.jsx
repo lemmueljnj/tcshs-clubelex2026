@@ -33,7 +33,14 @@ export default function StudentDashboard() {
         <h1 className="font-heading text-3xl sm:text-4xl font-semibold tracking-tight mt-2">
           Hello, {user?.name?.split(' ')[0] || 'student'} 👋
         </h1>
-        <p className="text-muted-foreground mt-1">Choose an active election below to cast your vote.</p>
+        {(user?.year_level || user?.section_name) && (
+          <div className="mt-2 inline-flex items-center gap-2 text-sm text-muted-foreground" data-testid="student-section-badge">
+            <span className="rounded-full border border-border px-2.5 py-0.5 bg-white text-foreground text-xs">
+              {[user.year_level, user.section_name].filter(Boolean).join(' — ')}
+            </span>
+          </div>
+        )}
+        <p className="text-muted-foreground mt-2">Choose an active election below to cast your vote.</p>
 
         {user?.status === 'pending' && (
           <div className="mt-6 rounded-xl border border-amber-300 bg-amber-50 text-amber-900 p-4 flex items-start gap-3" data-testid="pending-banner">

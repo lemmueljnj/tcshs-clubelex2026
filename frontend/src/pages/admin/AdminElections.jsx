@@ -8,14 +8,14 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Trash2, ChevronRight, X } from 'lucide-react';
+import { Plus, Trash2, ChevronRight, X, Globe, GraduationCap } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function AdminElections() {
   const [elections, setElections] = useState([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ title: '', description: '', positions: [{ title: '', description: '' }] });
+  const [form, setForm] = useState({ title: '', description: '', positions: [{ title: '', description: '', scope: 'school' }] });
   const [saving, setSaving] = useState(false);
 
   const load = async () => {
@@ -32,7 +32,7 @@ export default function AdminElections() {
 
   useEffect(() => { load(); }, []);
 
-  const addPosition = () => setForm((f) => ({ ...f, positions: [...f.positions, { title: '', description: '' }] }));
+  const addPosition = () => setForm((f) => ({ ...f, positions: [...f.positions, { title: '', description: '', scope: 'school' }] }));
   const removePosition = (i) => setForm((f) => ({ ...f, positions: f.positions.filter((_, idx) => idx !== i) }));
   const setPosition = (i, k, v) => setForm((f) => {
     const p = [...f.positions]; p[i] = { ...p[i], [k]: v }; return { ...f, positions: p };
@@ -40,7 +40,9 @@ export default function AdminElections() {
 
   const create = async (e) => {
     e.preventDefault();
-    const cleanPositions = form.positions.filter((p) => p.title.trim());
+    const cleanPositions = form.positions
+      .filter((p) => p.title.trim())
+      .map((p) => ({ title: p.title.trim(), description: p.description || '', scope: p.scope || 'school' }));
     if (!form.title.trim()) { toast.error('Title is required'); return; }
     if (cleanPositions.length === 0) { toast.error('Add at least one position'); return; }
     setSaving(true);
@@ -52,7 +54,7 @@ export default function AdminElections() {
       });
       toast.success('Election created');
       setOpen(false);
-      setForm({ title: '', description: '', positions: [{ title: '', description: '' }] });
+      setForm({ title: '', description: '', positions: [{ title: '', description: '', scope: 'school' }] });
       load();
     } catch (err) {
       toast.error(formatApiError(err));
@@ -98,13 +100,33 @@ export default function AdminElections() {
                 <Label>Positions</Label>
                 <div className="space-y-2 mt-1">
                   {form.positions.map((p, i) => (
-                    <div key={i} className="flex gap-2">
-                      <Input placeholder="e.g. President" value={p.title} onChange={(e) => setPosition(i, 'title', e.target.value)} data-testid={`position-title-${i}`} />
-                      {form.positions.length > 1 && (
-                        <Button type="button" variant="ghost" size="icon" onClick={() => removePosition(i)} data-testid={`remove-position-${i}`}>
-                          <X className="h-4 w-4" />
-                        </Button>
-                      )}
+                    <div key={i} className="rounded-lg border border-border p-2 space-y-2">
+                      <div className="flex gap-2">
+                        <Input placeholder="e.g. President" value={p.title} onChange={(e) => setPosition(i, 'title', e.target.value)} data-testid={`position-title-${i}`} />
+                        {form.positions.length > 1 && (
+                          <Button type="button" variant="ghost" size="icon" onClick={() => removePosition(i)} data-testid={`remove-position-${i}`}>
+                            <X className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setPosition(i, 'scope', 'school')}
+                          className={`flex-1 text-xs px-3 py-1.5 rounded-full border transition-colors ${p.scope === 'school' ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:bg-muted'}`}
+                          data-testid={`position-scope-school-${i}`}
+                        >
+                          <Globe className="h-3 w-3 inline mr-1" /> School-wide
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPosition(i, 'scope', 'year')}
+                          className={`flex-1 text-xs px-3 py-1.5 rounded-full border transition-colors ${p.scope === 'year' ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:bg-muted'}`}
+                          data-testid={`position-scope-year-${i}`}
+                        >
+                          <GraduationCap className="h-3 w-3 inline mr-1" /> Year-level only
+                        </button>
+                      </div>
                     </div>
                   ))}
                   <Button type="button" variant="outline" size="sm" onClick={addPosition} data-testid="add-position-button">

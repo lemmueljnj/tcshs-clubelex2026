@@ -12,6 +12,7 @@ import AdminDashboard from '@/pages/admin/AdminDashboard';
 import AdminElections from '@/pages/admin/AdminElections';
 import AdminElectionDetail from '@/pages/admin/AdminElectionDetail';
 import AdminVoters from '@/pages/admin/AdminVoters';
+import AdminSections from '@/pages/admin/AdminSections';
 import AdminAdmins from '@/pages/admin/AdminAdmins';
 import AdminSettings from '@/pages/admin/AdminSettings';
 import AdminResults from '@/pages/admin/AdminResults';
@@ -67,6 +68,7 @@ export default function App() {
             <Route path="/admin/elections" element={<Protected role="admin"><AdminElections /></Protected>} />
             <Route path="/admin/elections/:electionId" element={<Protected role="admin"><AdminElectionDetail /></Protected>} />
             <Route path="/admin/voters" element={<Protected role="admin"><AdminVoters /></Protected>} />
+            <Route path="/admin/sections" element={<Protected role="admin"><AdminSections /></Protected>} />
             <Route path="/admin/admins" element={<Protected role="admin"><AdminAdmins /></Protected>} />
             <Route path="/admin/settings" element={<Protected role="admin"><AdminSettings /></Protected>} />
             <Route path="/admin/results" element={<Protected role="admin"><AdminResults /></Protected>} />
