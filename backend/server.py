@@ -532,6 +532,54 @@ async def remove_voter_list(entry_id: str, _: dict = Depends(require_admin)):
     return {"ok": True}
 
 
+# ----- Admin user management -----
+class AdminCreateIn(BaseModel):
+    email: EmailStr
+    name: str = Field(min_length=1, max_length=80)
+    password: str = Field(min_length=6)
+
+
+@api.get("/admin/admins")
+async def list_admins(_: dict = Depends(require_admin)):
+    admins = await db.users.find({"role": "admin"}, {"_id": 0, "password_hash": 0}).sort("created_at", 1).to_list(500)
+    return admins
+
+
+@api.post("/admin/admins")
+async def create_admin(body: AdminCreateIn, _: dict = Depends(require_admin)):
+    email = body.email.lower().strip()
+    if await db.users.find_one({"email": email}):
+        raise HTTPException(status_code=400, detail="An account with this email already exists")
+    doc = {
+        "id": str(uuid.uuid4()),
+        "email": email,
+        "name": body.name.strip(),
+        "password_hash": hash_password(body.password),
+        "role": "admin",
+        "status": "approved",
+        "student_id": "",
+        "created_at": now_utc().isoformat(),
+    }
+    await db.users.insert_one(doc)
+    doc.pop("password_hash", None)
+    doc.pop("_id", None)
+    return doc
+
+
+@api.delete("/admin/admins/{user_id}")
+async def delete_admin(user_id: str, current: dict = Depends(require_admin)):
+    if user_id == current["id"]:
+        raise HTTPException(status_code=400, detail="You cannot remove your own admin account")
+    target = await db.users.find_one({"id": user_id, "role": "admin"})
+    if not target:
+        raise HTTPException(status_code=404, detail="Admin not found")
+    total_admins = await db.users.count_documents({"role": "admin"})
+    if total_admins <= 1:
+        raise HTTPException(status_code=400, detail="Cannot remove the last remaining admin")
+    await db.users.delete_one({"id": user_id, "role": "admin"})
+    return {"ok": True}
+
+
 # ----- Stats -----
 @api.get("/admin/stats")
 async def admin_stats(_: dict = Depends(require_admin)):
