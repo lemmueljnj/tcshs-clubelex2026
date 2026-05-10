@@ -1,0 +1,92 @@
+{
+  "theme": "Light",
+  "archetype": "Archetype 3 (Pastel & Soft) mixed with Academic Structural Clarity",
+  "colors": {
+    "background": "#FAF9F6",
+    "foreground": "#111827",
+    "primary": "#4A729A",
+    "primary_foreground": "#FFFFFF",
+    "secondary": "#E5E9EC",
+    "secondary_foreground": "#111827",
+    "accent": "#E8F0EC",
+    "accent_foreground": "#1A3B2B",
+    "destructive": "#D9534F",
+    "destructive_foreground": "#FFFFFF",
+    "border": "#E5E7EB",
+    "card": "#FFFFFF",
+    "card_foreground": "#111827",
+    "muted": "#F3F4F6",
+    "muted_foreground": "#6B7280",
+    "ring": "#4A729A"
+  },
+  "typography": {
+    "headings": "Outfit",
+    "body": "Work Sans",
+    "strategy": "High legibility, friendly but structured. Tight tracking for headings (>32px), loose line-height for body. NO Inter or default sans for headings.",
+    "hierarchy": {
+      "h1": "text-4xl sm:text-5xl tracking-tight font-semibold",
+      "h2": "text-2xl sm:text-3xl tracking-tight font-medium",
+      "h3": "text-xl sm:text-2xl font-medium",
+      "body": "text-base leading-relaxed",
+      "labels": "text-xs tracking-[0.2em] uppercase font-semibold text-muted-foreground"
+    }
+  },
+  "spacing_and_layout": {
+    "strategy": "Generous Spacing Philosophy. Use p-8 or p-12 for major containers to give breathing room.",
+    "admin_dashboard": "The 'Control Room' Grid but softened. grid-cols-1 md:grid-cols-4. gap-6. Flat, dense, minimal borders.",
+    "student_voting": "Mobile-first, centered bento style layout. Wide tap targets, clear negative space.",
+    "radius": "0.75rem (rounded-xl) for cards, 9999px (rounded-full) for primary CTA buttons."
+  },
+  "surfaces_and_components": {
+    "cards": "Flat Solid. bg-white with 1px subtle border (border-border) and soft shadow-sm. Avoid heavy shadows.",
+    "header": "Solid Background with a hard bottom border for admin. Glassmorphism (backdrop-blur-md bg-white/70 border-b border-border) for the student app.",
+    "buttons": "Primary CTA must use primary color with hover state: hover:bg-[#3B5B7A] hover:text-white. Flat, no extreme gradients.",
+    "inputs": "Shadcn default customized with rounded-lg, border-border, focus:ring-2 focus:ring-[#4A729A]/20."
+  },
+  "motion_and_interactions": {
+    "hover_states": "Subtle scale up (-translate-y-[2px]) and shadow-md on interactive voting cards.",
+    "page_transitions": "Fade and slight slide up using framer-motion.",
+    "accessibility": "Must respect prefers-reduced-motion. Ensure focus states have high contrast and clear focus rings."
+  },
+  "icons": {
+    "library": "lucide-react",
+    "style": "Clean, consistent stroke width (1.5px), soft edges."
+  },
+  "media": {
+    "strategy": "Authentic, diverse student representation. Abstract calming backgrounds for frictionless feeling.",
+    "image_urls": [
+      {
+        "category": "hero_background",
+        "url": "https://static.prod-images.emergentagent.com/jobs/2eaab084-418d-46be-8121-6f8b3f7b526b/images/5558bed19c0daabf43836a3bbe40d1ebfeb9bc465d29a3b6015aaac5399d19ef.png",
+        "description": "Abstract minimalist background with soft pastel colors, pale blue, warm beige, and sage green (ideal for auth/landing pages)."
+      },
+      {
+        "category": "illustration_ballot",
+        "url": "https://static.prod-images.emergentagent.com/jobs/2eaab084-418d-46be-8121-6f8b3f7b526b/images/b7d3d415733abf522be4db2c6e87640c19e3415a31a0a6b5c265a4d605fe40b0.png",
+        "description": "Clean minimalist illustration of an election ballot box with soft pastel colors (use for empty states or successful vote completion)."
+      },
+      {
+        "category": "student_group_1",
+        "url": "https://images.unsplash.com/photo-1758270705641-acf09b68a91f?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzh8MHwxfHNlYXJjaHwzfHxkaXZlcnNlJTIwdW5pdmVyc2l0eSUyMHN0dWRlbnRzJTIwc21pbGluZ3xlbnwwfHx8fDE3Nzg0MTUxMzl8MA&ixlib=rb-4.1.0&q=85",
+        "description": "Diverse group of smiling students taking a selfie in classroom (for login/landing marketing section)."
+      },
+      {
+        "category": "campus_building",
+        "url": "https://images.unsplash.com/photo-1664273891579-22f28332f3c4?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDQ2Mzl8MHwxfHNlYXJjaHwxfHxtb2Rlcm4lMjB1bml2ZXJzaXR5JTIwY2FtcHVzJTIwYnVpbGRpbmclMjBhcmNoaXRlY3R1cmV8ZW58MHx8fHwxNzc4NDE1MTM5fDA&ixlib=rb-4.1.0&q=85",
+        "description": "Modern university campus building architecture (for about/info sections)."
+      }
+    ]
+  },
+  "instructions_to_main_agent": [
+    "Strictly apply the defined color palette via Tailwind CSS configuration.",
+    "Ensure all fonts are imported correctly in index.css. Use Outfit for Headings and Work Sans for Body.",
+    "Implement the 'Control Room' grid for the Admin Dashboard (dense, clear hierarchy, subtle borders).",
+    "For the Student Voting interface, emphasize minimalism. One clear action per screen. Use large, accessible tap targets.",
+    "CRITICAL: All interactive elements MUST have a data-testid attribute in kebab-case based on role (e.g., data-testid='submit-vote-button').",
+    "Never use fully transparent backgrounds for headers or cards over images. Use the defined Glassmorphism or solid colors.",
+    "Override default shadcn component styles (like cards) to match the 'Flat Solid' look defined in surfaces_and_components.",
+    "Do NOT use teal green or teal blue (#1B93A4) for dashboards. Use the assigned primary color (Muted Academic Blue).",
+    "Ensure high contrast on all text, particularly over the generated pastel backgrounds.",
+    "DO NOT use placeholder images. Use ONLY the provided media URLs from this JSON."
+  ]
+}
