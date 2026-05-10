@@ -22,22 +22,22 @@ Build a simple, minimal, student-friendly voting/election application with a cle
 
 ## Implemented (2026-05-10)
 ### Backend
-- POST/GET /api/auth/{register,login,me,logout}
-- /api/elections CRUD (admin-only mutations) with embedded positions
-- /api/elections/{id}/candidates CRUD
-- /api/elections/{id}/vote — one vote per voter+election, idempotent via client_id
-- /api/elections/{id}/results (admin) — turnout %, position tallies
+- POST/GET /api/auth/{register,login,me,logout} — register accepts `section_id` (required when sections exist); user gets `year_level` + `section_name` stamped from chosen section
+- /api/sections (public GET); /api/admin/sections (POST/DELETE; admin-only; in-use guard)
+- /api/elections CRUD with **position scope** (`school` | `year`); year-scope positions filter candidates per voter
+- /api/elections/{id}/candidates CRUD with `year_level` validation (required for year-scope; null for school-scope)
+- /api/elections/{id}/vote — server validates scope match (rejects voting outside one's year), stamps `section_id`/`section_name`/`year_level` on the vote doc; one vote per voter+election; idempotent via client_id
+- /api/elections/{id}/results — overall tally + `sections` list + `section_totals` + per-candidate `by_section` breakdown
 - /api/admin/voters list/PATCH/DELETE; /api/admin/voter-list list/POST/bulk/DELETE
-- /api/admin/admins list/POST/DELETE with self/last-admin guards
-- /api/admin/stats dashboard counters
-- GET /api/settings (public) and PATCH /api/admin/settings (admin) — branding name + logo URL
+- /api/admin/admins list/POST/DELETE (self/last-admin guards)
+- /api/admin/stats; GET /api/settings + PATCH /api/admin/settings (branding)
 - Admin seeded from env on startup
 
 ### Frontend
-- Landing, Login, Register
-- Student Dashboard, Vote page (offline queue + sync)
-- Admin Dashboard, Elections list + detail, Voters (accounts + roster + bulk import), Admins, **Settings (name + logo)**, Live Results (5s polling)
-- Shared `<BrandMark />` with `BrandProvider` — brand updates live across navbar, landing, login, register, and document title
+- Landing, Login, Register (registration grouped Year-level + Section selector)
+- Student Dashboard (year-level/section badge), Vote page (server-filtered candidates per year), offline queue + sync
+- Admin Dashboard, Elections list + detail (per-position scope toggle, candidate year-level field), Voters, Sections, Admins, Settings, Live Results (overall + per-section breakdown table)
+- Shared `<BrandMark />` with `BrandProvider` — brand updates live
 - Offline banner with auto-sync
 
 ## Tests
