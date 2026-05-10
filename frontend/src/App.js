@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
+import { BrandProvider } from '@/context/BrandContext';
 import Landing from '@/pages/Landing';
 import Login from '@/pages/Login';
 import Register from '@/pages/Register';
@@ -12,6 +13,7 @@ import AdminElections from '@/pages/admin/AdminElections';
 import AdminElectionDetail from '@/pages/admin/AdminElectionDetail';
 import AdminVoters from '@/pages/admin/AdminVoters';
 import AdminAdmins from '@/pages/admin/AdminAdmins';
+import AdminSettings from '@/pages/admin/AdminSettings';
 import AdminResults from '@/pages/admin/AdminResults';
 import OfflineBanner from '@/components/OfflineBanner';
 import '@/App.css';
@@ -52,24 +54,27 @@ export default function App() {
 
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <OfflineBanner />
-        <Routes>
-          <Route path="/" element={<HomeRedirect />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/dashboard" element={<Protected role="student"><StudentDashboard /></Protected>} />
-          <Route path="/vote/:electionId" element={<Protected role="student"><VotePage /></Protected>} />
-          <Route path="/admin" element={<Protected role="admin"><AdminDashboard /></Protected>} />
-          <Route path="/admin/elections" element={<Protected role="admin"><AdminElections /></Protected>} />
-          <Route path="/admin/elections/:electionId" element={<Protected role="admin"><AdminElectionDetail /></Protected>} />
-          <Route path="/admin/voters" element={<Protected role="admin"><AdminVoters /></Protected>} />
-          <Route path="/admin/admins" element={<Protected role="admin"><AdminAdmins /></Protected>} />
-          <Route path="/admin/results" element={<Protected role="admin"><AdminResults /></Protected>} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-        <Toaster richColors position="top-center" />
-      </BrowserRouter>
+      <BrandProvider>
+        <BrowserRouter>
+          <OfflineBanner />
+          <Routes>
+            <Route path="/" element={<HomeRedirect />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/dashboard" element={<Protected role="student"><StudentDashboard /></Protected>} />
+            <Route path="/vote/:electionId" element={<Protected role="student"><VotePage /></Protected>} />
+            <Route path="/admin" element={<Protected role="admin"><AdminDashboard /></Protected>} />
+            <Route path="/admin/elections" element={<Protected role="admin"><AdminElections /></Protected>} />
+            <Route path="/admin/elections/:electionId" element={<Protected role="admin"><AdminElectionDetail /></Protected>} />
+            <Route path="/admin/voters" element={<Protected role="admin"><AdminVoters /></Protected>} />
+            <Route path="/admin/admins" element={<Protected role="admin"><AdminAdmins /></Protected>} />
+            <Route path="/admin/settings" element={<Protected role="admin"><AdminSettings /></Protected>} />
+            <Route path="/admin/results" element={<Protected role="admin"><AdminResults /></Protected>} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+          <Toaster richColors position="top-center" />
+        </BrowserRouter>
+      </BrandProvider>
     </AuthProvider>
   );
 }

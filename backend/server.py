@@ -166,6 +166,11 @@ class VoterStatusPatch(BaseModel):
     status: Literal["approved", "rejected", "pending"]
 
 
+class BrandIn(BaseModel):
+    name: Optional[str] = Field(default=None, max_length=60)
+    logo_url: Optional[str] = Field(default=None, max_length=2048)
+
+
 # ----- Cookie helper -----
 def set_auth_cookie(response: Response, token: str):
     response.set_cookie(
@@ -578,6 +583,41 @@ async def delete_admin(user_id: str, current: dict = Depends(require_admin)):
         raise HTTPException(status_code=400, detail="Cannot remove the last remaining admin")
     await db.users.delete_one({"id": user_id, "role": "admin"})
     return {"ok": True}
+
+
+# ----- Branding (public read, admin write) -----
+DEFAULT_BRAND = {"name": "CampusVote", "logo_url": ""}
+
+
+async def get_brand_doc() -> dict:
+    doc = await db.settings.find_one({"key": "brand"}, {"_id": 0})
+    if not doc:
+        return {**DEFAULT_BRAND, "key": "brand", "updated_at": None}
+    return {**DEFAULT_BRAND, **doc}
+
+
+@api.get("/settings")
+async def get_settings():
+    doc = await get_brand_doc()
+    return {"name": doc.get("name") or DEFAULT_BRAND["name"], "logo_url": doc.get("logo_url") or ""}
+
+
+@api.patch("/admin/settings")
+async def update_settings(body: BrandIn, _: dict = Depends(require_admin)):
+    update = {}
+    if body.name is not None:
+        clean = body.name.strip()
+        if not clean:
+            raise HTTPException(status_code=400, detail="Name cannot be empty")
+        update["name"] = clean
+    if body.logo_url is not None:
+        update["logo_url"] = body.logo_url.strip()
+    if not update:
+        raise HTTPException(status_code=400, detail="Nothing to update")
+    update["updated_at"] = now_utc().isoformat()
+    await db.settings.update_one({"key": "brand"}, {"$set": update}, upsert=True)
+    doc = await get_brand_doc()
+    return {"name": doc.get("name") or DEFAULT_BRAND["name"], "logo_url": doc.get("logo_url") or ""}
 
 
 # ----- Stats -----

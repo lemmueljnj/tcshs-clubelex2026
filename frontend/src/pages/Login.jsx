@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { formatApiError } from '@/lib/api';
 import { toast } from 'sonner';
-import { Vote } from 'lucide-react';
+import BrandMark from '@/components/BrandMark';
 
 export default function Login() {
   const { login } = useAuth();
@@ -32,13 +32,8 @@ export default function Login() {
   return (
     <div className="min-h-screen academic-bg flex items-center justify-center px-4 py-12" data-testid="login-page">
       <div className="w-full max-w-md soft-card p-8 animate-fade-up">
-        <Link to="/" className="flex items-center gap-2 mb-6" data-testid="brand-link">
-          <div className="h-8 w-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center">
-            <Vote className="h-4 w-4" />
-          </div>
-          <div className="font-heading font-semibold text-lg">
-            Campus<span className="text-primary">Vote</span>
-          </div>
+        <Link to="/" className="mb-6 inline-flex" data-testid="brand-link">
+          <BrandMark />
         </Link>
         <h1 className="font-heading text-2xl sm:text-3xl font-medium tracking-tight">Sign in</h1>
         <p className="text-sm text-muted-foreground mt-1">Welcome back. Enter your email and password.</p>

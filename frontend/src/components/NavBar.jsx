@@ -1,7 +1,8 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
-import { LogOut, Vote } from 'lucide-react';
+import { LogOut } from 'lucide-react';
+import BrandMark from '@/components/BrandMark';
 
 export default function NavBar({ links = [] }) {
   const { user, logout } = useAuth();
@@ -20,12 +21,7 @@ export default function NavBar({ links = [] }) {
     >
       <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
         <Link to={user?.role === 'admin' ? '/admin' : '/dashboard'} className="flex items-center gap-2" data-testid="brand-link">
-          <div className="h-8 w-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center">
-            <Vote className="h-4 w-4" />
-          </div>
-          <div className="font-heading font-semibold text-lg leading-none">
-            Campus<span className="text-primary">Vote</span>
-          </div>
+          <BrandMark />
         </Link>
 
         <nav className="hidden md:flex items-center gap-7">

@@ -5,6 +5,7 @@ export const ADMIN_LINKS = [
   { to: '/admin/elections', label: 'Elections' },
   { to: '/admin/voters', label: 'Voters' },
   { to: '/admin/admins', label: 'Admins' },
+  { to: '/admin/settings', label: 'Settings' },
   { to: '/admin/results', label: 'Results' },
 ];
 

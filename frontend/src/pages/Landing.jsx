@@ -1,19 +1,15 @@
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Vote, ShieldCheck, WifiOff, Sparkles } from 'lucide-react';
+import { ShieldCheck, WifiOff, Sparkles } from 'lucide-react';
+import BrandMark from '@/components/BrandMark';
+import { useBrand } from '@/context/BrandContext';
 
 export default function Landing() {
+  const { name } = useBrand();
   return (
     <div className="min-h-screen academic-bg" data-testid="landing-page">
       <header className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center">
-            <Vote className="h-4 w-4" />
-          </div>
-          <div className="font-heading font-semibold text-lg">
-            Campus<span className="text-primary">Vote</span>
-          </div>
-        </div>
+        <BrandMark />
         <div className="flex items-center gap-2">
           <Link to="/login"><Button variant="ghost" className="rounded-full" data-testid="nav-login">Sign in</Button></Link>
           <Link to="/register"><Button className="rounded-full" data-testid="nav-register">Get started</Button></Link>
@@ -29,7 +25,7 @@ export default function Landing() {
             in minutes.
           </h1>
           <p className="mt-6 text-base sm:text-lg text-muted-foreground max-w-xl leading-relaxed">
-            CampusVote gives student councils a calm, accessible way to run elections —
+            {name} gives student councils a calm, accessible way to run elections —
             verified voters, one vote per account, live results for admins, and offline-friendly voting.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
@@ -56,7 +52,7 @@ export default function Landing() {
               className="w-full h-72 object-cover"
             />
             <div className="p-5 border-t border-border">
-              <div className="stat-label">Why CampusVote</div>
+              <div className="stat-label">Why {name}</div>
               <p className="mt-2 text-sm text-foreground/80">
                 Built for student councils, debate societies and class representatives.
                 Beautifully simple, secure by design.
@@ -68,7 +64,7 @@ export default function Landing() {
 
       <footer className="border-t border-border bg-white/60">
         <div className="max-w-6xl mx-auto px-6 py-6 text-xs text-muted-foreground flex justify-between">
-          <span>© {new Date().getFullYear()} CampusVote</span>
+          <span>© {new Date().getFullYear()} {name}</span>
           <span>Built for students. Designed for trust.</span>
         </div>
       </footer>
