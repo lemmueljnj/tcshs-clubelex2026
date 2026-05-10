@@ -30,12 +30,14 @@ Build a simple, minimal, student-friendly voting/election application with a cle
 - /api/admin/voters list/PATCH/DELETE; /api/admin/voter-list list/POST/bulk/DELETE
 - /api/admin/admins list/POST/DELETE with self/last-admin guards
 - /api/admin/stats dashboard counters
+- GET /api/settings (public) and PATCH /api/admin/settings (admin) — branding name + logo URL
 - Admin seeded from env on startup
 
 ### Frontend
 - Landing, Login, Register
 - Student Dashboard, Vote page (offline queue + sync)
-- Admin Dashboard, Elections list + detail, Voters (accounts + roster + bulk import), Admins, Live Results (5s polling)
+- Admin Dashboard, Elections list + detail, Voters (accounts + roster + bulk import), Admins, **Settings (name + logo)**, Live Results (5s polling)
+- Shared `<BrandMark />` with `BrandProvider` — brand updates live across navbar, landing, login, register, and document title
 - Offline banner with auto-sync
 
 ## Tests
